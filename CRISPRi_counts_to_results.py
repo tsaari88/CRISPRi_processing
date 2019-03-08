@@ -3,6 +3,7 @@
 import argparse
 import os
 import re
+import json
 import numpy as np
 import pandas as pd
 from scipy.stats.mstats import gmean
@@ -86,20 +87,20 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
+	if args.median_ratio_normalize:
+		norm_method = "median_ratio"
+	else:
+		norm_method = "readcount"
+
 	if args.input_csv:
 		dat = pd.read_csv(args.input_csv, dtype=str)
+	elif args.input_json:
+		dat = pd.read_json(args.input_json, dtype=str)
+
 		required_cols = ['expt_name', 'countsfilepath', 'replicate', 'timepoint']
 		if not all(x in dat.columns.tolist() for x in required_cols):
-			raise RuntimeError("Input csv must contain the following columns: " + ", ".join(required_cols))
+			raise RuntimeError("Input DataFrame must contain the following columns: " + ", ".join(required_cols))
 		#Merge upon list of all possible OligoIDs
 		IDs = pd.read_csv(args.IDs_list, names=["OligoID"])
 
-		if args.median_ratio_normalize:
-			norm_method = "median_ratio"
-		else:
-			norm_method = "readcount"
-
 		process_all(dat, int(args.T0_mincount), norm_method, IDs, args.output_dir)
-
-	elif args.input_json:
-		raise RuntimeError("JSON input not implemented yet")
