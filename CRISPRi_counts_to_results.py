@@ -4,12 +4,12 @@ import argparse
 import os
 import re
 import json
-import numpy as np
-import pandas as pd
+import numpy as np #Tested w/ v 1.16.2
+import pandas as pd #Tested w/ v 0.24
 from scipy.stats.mstats import gmean
 
 
-def process_all(file_df, thres, norm_meth, all_IDs, outdir):
+def process_all(file_df, thres, norm_meth, df_to_merge, outdir):
 	expt_groups = file_df.groupby('expt_name')
 	#Process each experiment
 	for expt_name in expt_groups.groups.keys():
@@ -22,8 +22,8 @@ def process_all(file_df, thres, norm_meth, all_IDs, outdir):
 		for rep in rep_groups.groups.keys():
 			rep_inpt_df = expt.iloc[rep_groups.groups[rep]].reset_index()
 			results_reps.append(process_replicate(rep_inpt_df, rep, thres, norm_meth))
-		#Start with merging first rep on all_IDs, then merge the other experimental reps iteratively
-		expt_merge = pd.merge(all_IDs, results_reps[0], how='left', on='OligoID')
+		#Start with merging first rep with df_to_merge, then merge the other experimental reps iteratively
+		expt_merge = pd.merge(df_to_merge, results_reps[0], how='left', on='OligoID')
 		for i in range(1,len(results_reps)):
 			expt_merge = expt_merge.merge(results_reps[i], how='outer', on='OligoID')
 		#Calculate mean log2FC from replicates
@@ -75,9 +75,11 @@ def normalize_counts(df, method):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(prog='python CRISPRi_counts_to_results.py', description = "Combines counts files in an experiment, performs initial filtering, read count normalization, and guide-level CiScore calculation")
-	parser.add_argument('-i', '--IDs_list', required=True, help="Filename of a list of unique OligoIDs to merge results upon")
 	parser.add_argument('-m', '--T0_mincount', default=50, help="Minimum count in T0 datapoint required to use for processing")
 	parser.add_argument('-o', '--output_dir', required=True, help="Directory to place the results. Each experiment will have its own results file in this directory with the naming convention expt_name_results.txt")
+	merge_with = parser.add_mutually_exclusive_group(required=True)
+	merge_with.add_argument('-i', '--IDs_list', help="Filename of a list of unique OligoIDs to merge results upon")
+	merge_with.add_argument('-d', '--data_file', help="Filename of a data file, with chr, start, end, OligoID, GuideSequence, and target columns (for compatibility with J. Engreitz CalculateTilingStatistic.R) to merge results upon. Each row must feature a unique OligoID.")
 	input_data = parser.add_mutually_exclusive_group(required=True)
 	input_data.add_argument('-c', '--input_csv', help="Filename of a comma-separated value table containing experiment name, count filenames, replicates, timepoints, etc. Multiple experiments can be defined in this table, so the same table can be used for multiple experiments")
 	input_data.add_argument('-j', '--input_json', help="JSON string containing experiment name, sample filenames, replicates, timepoints, etc. Multiple experiments can be defined in this table, so the same table can be used for multiple experiments")
@@ -97,10 +99,18 @@ if __name__ == '__main__':
 	elif args.input_json:
 		dat = pd.read_json(args.input_json, dtype=str)
 
-		required_cols = ['expt_name', 'countsfilepath', 'replicate', 'timepoint']
-		if not all(x in dat.columns.tolist() for x in required_cols):
-			raise RuntimeError("Input DataFrame must contain the following columns: " + ", ".join(required_cols))
-		#Merge upon list of all possible OligoIDs
-		IDs = pd.read_csv(args.IDs_list, names=["OligoID"])
+	dat_required_cols = ['expt_name', 'countsfilepath', 'replicate', 'timepoint']
+	if not all(x in dat.columns.tolist() for x in dat_required_cols):
+		raise RuntimeError("Input DataFrame must contain the following columns: " + ", ".join(dat_required_cols))
+	#Set up df to merge upon
+	if args.IDs_list:
+		#Minimal - OligoIDs only
+		df_to_merge = pd.read_csv(args.IDs_list, header=None, names=["OligoID"])
+	elif args.data_file:
+		#Set up df Compatible with J. Engreitz CalulateTilingStatistic.R
+		tomerge_required_cols = ['chr', 'start', 'end', 'OligoID', 'GuideSequence', 'target']
+		df_to_merge = pd.read_csv(args.data_file, sep='\t')
+		if not all(x in df_to_merge.columns.tolist() for x in tomerge_required_cols):
+			raise RuntimeError("input -d/--data_file must contain the following columns: " + ", ".join(tomerge_required_cols))
 
-		process_all(dat, int(args.T0_mincount), norm_method, IDs, args.output_dir)
+	process_all(dat, int(args.T0_mincount), norm_method, df_to_merge, args.output_dir)
