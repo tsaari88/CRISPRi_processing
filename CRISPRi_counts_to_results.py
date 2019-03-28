@@ -47,13 +47,15 @@ def process_replicate(file_df, rep, thres, norm_meth):
 	#Merge and normalize
 	rep_df = pd.merge(start_df, end_df, how='inner', on='OligoID')
 	rep_df = normalize_counts(rep_df, norm_meth)
-	#Calculate log2FC from normalized start/end values
+	#Setup for calculation
 	colname_log2FC = "rep" + rep + "_log2FC"
+	#get appropriate start and end col via regex
 	start_normcol_l = [col for col in rep_df.columns if re.search("START.*Norm", col)]
 	start_normcol = "".join(start_normcol_l) if len(start_normcol_l) == 1 else "" #Should only return 1 col name, otherwise init empty string to throw error
 	end_normcol_l = [col for col in rep_df.columns if re.search("END.*Norm", col)]
 	end_normcol = "".join(end_normcol_l) if len(end_normcol_l) == 1 else ""
-	rep_df[colname_log2FC] = np.log2(rep_df[start_normcol] / rep_df[end_normcol])
+	#Calculate log2FC from normalized start/end values
+	rep_df[colname_log2FC] = np.log2(rep_df[end_normcol] / rep_df[start_normcol])
 	return(rep_df)
 
 
