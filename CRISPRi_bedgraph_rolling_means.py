@@ -72,6 +72,7 @@ if __name__ == '__main__':
 	df_scores = expt[['OligoID', 'mean_log2FC']]
 	df_rawdata = df_position.merge(df_scores, how='left', left_on='name', right_on='OligoID').dropna().drop(['name', 'OligoID'], 1)
 	df_rawdata.rename({'mean_log2FC' : 'score'}, axis=1, inplace=True)
+	df_rawdata['score'] *= -1 #Negate values so that essential areas are positive
 
 	#Calculate rolling means and generate bedgraph from these values
 	df_bedgraph = rolling_means_bedgraph(df_rawdata, nguides=int(args.n_guides), bgint=int(args.interval_size))
