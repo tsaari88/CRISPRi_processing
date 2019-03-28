@@ -109,7 +109,7 @@ if __name__ == '__main__':
 	elif args.data_file:
 		#Set up df Compatible with J. Engreitz CalulateTilingStatistic.R and/or downstream bedfile creation
 		tomerge_required_cols = ['chr', 'start', 'end', 'OligoID', 'GuideSequence', 'target']
-		df_to_merge = pd.read_csv(args.data_file, sep='\t', dtype={"start" : np.int64, "end" : np.int64})
+		df_to_merge = pd.read_csv(args.data_file, sep='\t', dtype=object)
 		if not all(x in df_to_merge.columns.tolist() for x in tomerge_required_cols):
 			raise RuntimeError("input -d/--data_file must contain the following columns: " + ", ".join(tomerge_required_cols))
 
