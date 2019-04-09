@@ -10,6 +10,9 @@ from scipy.stats.mstats import gmean
 
 
 def process_all(file_df, thres, norm_meth, df_to_merge, outdir):
+    '''
+    Process all replicates within an experiment, merge these results, and write to file
+    '''
 	expt_groups = file_df.groupby('expt_name')
 	#Process each experiment
 	for expt_name in expt_groups.groups.keys():
@@ -35,6 +38,9 @@ def process_all(file_df, thres, norm_meth, df_to_merge, outdir):
 
 
 def process_replicate(file_df, rep, thres, norm_meth):
+    '''
+    Process a single replicate of an experiment (calclate log2FC)
+    '''
 	# "".join(list()) is used to get a string from a single-valued Series
 	start_countsfile = "".join(list(file_df.query('timepoint == "START"')['countsfilepath']))
 	end_countsfile = "".join(list(file_df.query('timepoint == "END"')['countsfilepath']))
@@ -60,6 +66,9 @@ def process_replicate(file_df, rep, thres, norm_meth):
 
 
 def normalize_counts(df, method):
+    '''
+    Normalize counts with either total readcount or median-ratio method
+    '''
 	count_slice = df.iloc[:,1:3] #df should only have 3 columns: OligoID, start counts, and end counts. Grab the latter two
 	if method == "readcount":
 		normed = count_slice / count_slice.apply(np.sum, axis=0) * 1000000
