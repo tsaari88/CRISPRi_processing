@@ -113,6 +113,9 @@ if __name__ == '__main__':
 	dat_required_cols = ['expt_name', 'countsfilepath', 'replicate', 'timepoint']
 	if not all(x in dat.columns.tolist() for x in dat_required_cols):
 		raise RuntimeError("Input DataFrame must contain the following columns: " + ", ".join(dat_required_cols))
+
+	dat.sort_values(by=['expt_name', 'replicate', 'timepoint'], inplace=True)
+	dat.reset_index(inplace=True, drop=True)
 	#Set up df to merge upon
 	if args.IDs_list:
 		#Minimal - OligoIDs only
