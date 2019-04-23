@@ -71,6 +71,7 @@ if __name__ == '__main__':
 	parser.add_argument('-g', '--n_guides', required=True, help="Number of guides per window")
 	parser.add_argument('-i', '--interval_size', default=25, help="Interval size to use in output bedgraph")
 	parser.add_argument('-s', '--subtract_background', default=False, action='store_true', help="Boolean flag - if set, subtract median background signal")
+	parser.add_argument('-n', '--n_interval_exclude', default=20, help="When excluding sparse regions, how many consecutive intervals to observe zero counts before excluding")
 
 	args = parser.parse_args()
 
@@ -100,7 +101,7 @@ if __name__ == '__main__':
 	df_bedgraph = df_bedgraph[['chr', 'start', 'end', 'score']]
 
 	#Exclude sparse regions (no guides) from bedgraph
-	df_bedgraph = exclude_sparse_regions(df_bedgraph, df_rawdata, bgint=int(args.interval_size), introll=10)
+	df_bedgraph = exclude_sparse_regions(df_bedgraph, df_rawdata, bgint=int(args.interval_size), introll=int(args.n_interval_exclude))
 
 	if args.subtract_background:
 		df_bedgraph['score'] = df_bedgraph['score'] - df_bedgraph['score'].median()
