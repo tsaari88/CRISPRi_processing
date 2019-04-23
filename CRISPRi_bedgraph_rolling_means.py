@@ -42,6 +42,26 @@ def rolling_means_bedgraph(df, nguides, bgint):
 	return(pd.concat([bg_starts, bg_ends, interpol_y], axis=1))
 
 
+def exclude_sparse_regions(df_bg, df_raw, bgint, introll):
+	'''
+	Takes a bedgraph df with evenly-spaced intervals, and the df with guides' positional values,
+	counts # guides within a bedgraph interval, and rolls over several intervals to get rolling counts.
+	Then large regions (spanning a number of intervals) without guides can be filtered out.
+	'''
+	#Bin and count
+	bg_bins = df_bg['start']
+	bg_bins = bg_bins.append(pd.Series([bg_bins.max() + bgint])).reset_index(drop=True)
+	count = df_raw['position'].groupby(pd.cut(df_raw.position, bg_bins)).count()
+	#Roll the counts to consider multiple intervals at a time
+	rolling_count = count.rolling(introll, min_periods=1).sum()
+	rolling_count.reset_index(inplace=True, drop=True)
+	#Add rolling counts to bedgraph and exclude based on these
+	df_bg['rolling_guidecount'] = rolling_count
+	df_filtered = df_bg.loc[df_bg.rolling_guidecount > 0].copy()
+	df_filtered.drop(columns=['rolling_guidecount'], inplace=True)
+	return(df_filtered)
+
+
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(prog='python CRISPRi_bedgraph_rolling_means.py', description = "Use rolling means to estimate regional signal, and generate a valid bedgraph from this information.")
@@ -78,6 +98,9 @@ if __name__ == '__main__':
 	df_bedgraph = rolling_means_bedgraph(df_rawdata, nguides=int(args.n_guides), bgint=int(args.interval_size))
 	df_bedgraph['chr'] = region_chr
 	df_bedgraph = df_bedgraph[['chr', 'start', 'end', 'score']]
+
+	#Exclude sparse regions (no guides) from bedgraph
+	df_bedgraph = exclude_sparse_regions(df_bedgraph, df_rawdata, bgint=int(args.interval_size), introll=10)
 
 	if args.subtract_background:
 		df_bedgraph['score'] = df_bedgraph['score'] - df_bedgraph['score'].median()
